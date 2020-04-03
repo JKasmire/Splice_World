@@ -1,9 +1,42 @@
 globals [
 Game_Round
 Basic_Monsters_List
+Body_Parts_List
+Attributes_List
+Total_Successes_Dice_Roll
+Total_Doubles_Dice_Roll
+dice_to_roll
+temp_doubling_list
+Boost_list
+temp_attribute
+End_Goal_List
+Starter_Missions_list
 ]
 
-turtles-own [
+breed [Monsters Monster]
+breed [Body_Parts Body_Part]
+
+Monsters-own [
+Name
+Total_Attack
+Total_Defence
+Total_Fear
+Total_Cute
+Total_Speed
+Total_Intelligence
+Bonus_Attack
+Bonus_Defence
+Bonus_Fear
+Bonus_Cute
+Bonus_Speed
+Bonus_Intelligence
+Boost
+End_Goal
+Money
+Points
+]
+
+Body_Parts-own [
 Name
 Body_Position
 Attack
@@ -16,78 +49,172 @@ Intelligence
 
 to setup
   clear-all
-  set Basic_Monsters_List ["Gecko" "Tortoise" "Rabbit" "Spider" "Parrot" "Cat"]
-  if Garrulous? [print Basic_Monsters_List ]
-  create-turtles Number_Players
-  set Basic_Monsters_List shuffle Basic_Monsters_List
-  ask turtles [
-    set Name first Basic_Monsters_List
-    set Body_Position "Trunk"
-    set shape "pentagon"
-    set size 3
-    set Basic_Monsters_List but-first Basic_Monsters_List
-    if Garrulous? [print Name]
-    set Attack 0
-    set Defence 0
-    set Fear 0
-    set Cute 0
-    set Speed 0
-    set Intelligence 0
-  ]
-  layout-circle turtles 10
-  setup_monsters_bodies
-  setup_monsters_attributes
+  set Basic_Monsters_List ["bug" "tortoise" "rabbit" "spider" "bird" "cat"]
+  set Body_Parts_List ["Head" "Trunk" "Legs" "Right Arm" "Left Arm"]
+  set Attributes_List ["Attack" "Defence" "Cute" "Fear" "Intelligence" "Speed"]
+  if Garrulous? [print Basic_Monsters_List
+                 print Body_Parts_List
+                 print Attributes_List ]
+  setup_Monsters
   reset-ticks
 end
 
-to setup_monsters_bodies
-  ask turtles [
-    hatch 1 [
-                        set Body_Position "Legs"
-    set shape "campsite"
-    set ycor ycor - 3]
-    hatch 1 [
-                        set Body_Position "Head"
-    set shape "face happy"
-    set ycor ycor + 3]
-    hatch 1 [
-                        set Body_Position "Left_Arm"
-    set shape "footprint other"
-    set xcor xcor - 3]
-    hatch 1 [
-                        set Body_Position "Right_Arm"
-    set shape "footprint other"
-    set xcor xcor + 3]
+to setup_Monsters
+  create-Monsters Number_Players
+  set Basic_Monsters_List shuffle Basic_Monsters_List
+  ask Monsters [
+    set Name first Basic_Monsters_List
+    set Basic_Monsters_List but-first Basic_Monsters_List
+    if Garrulous? [print Name]
+    set size 2
+    set Money 5
+    set Points 0]
+  ask Monsters [ set shape Name]
+
+  layout-circle Monsters 10
+  ask Monsters [      set ycor ycor + 3 ]
+  ask Monsters [
+    hatch-Body_Parts 1 [
+      set size 2
+    foreach Attributes_List [ [x] -> set x 0 ]
+      set Body_Position "Head"
+      set shape "face happy"
+      set ycor ycor - 2
+      if Name = "rabbit" [set Cute Cute + 1]
+      if Name = "bird" [set Intelligence Intelligence + 2] ]
+    hatch-Body_Parts 1 [
+      set Body_Position "Trunk"
+      set size 2
+      foreach Attributes_List [ [x] -> set x 0]
+      set shape "pentagon"
+      set ycor ycor - 4
+      if Name = "tortoise" [set Defence Defence + 2] ]
+    hatch-Body_Parts 1 [
+      set size 2
+    foreach Attributes_List [ [x] -> set x 0]
+      set Body_Position "Legs"
+      set shape "campsite"
+      set ycor ycor - 6
+      if Name = "bug" [set Speed Speed + 2]
+      if Name = "rabbit" [set Cute Cute + 1] ]
+    hatch-Body_Parts 1 [
+      set size 2
+    foreach Attributes_List [ [x] -> set x 0]
+      set Body_Position "Left_Arm"
+      set shape "footprint other"
+      set ycor ycor - 4
+      set xcor xcor - 2
+      if Name = "spider" [set Fear Fear + 1]
+      if Name = "cat" [set Attack Attack + 1] ]
+    hatch-Body_Parts 1 [
+      set size 2
+    foreach Attributes_List [ [x] -> set x 0]
+      set Body_Position "Right_Arm"
+      set shape "footprint other"
+      set ycor ycor - 4
+      set xcor xcor + 2
+      if Name = "spider" [set Fear Fear + 1]
+      if Name = "cat" [set Attack Attack + 1] ] ]
+  setup_Boost_list
+  setup_Starter_Missions_list
+  setup_End_Goal_List
+
+end
+
+to setup_End_Goal_List
+  set End_Goal_List []
+  foreach Attributes_List [ x -> set temp_attribute  [ 8 ]
+                                 set temp_attribute  fput x temp_attribute
+                                 set End_Goal_List fput temp_attribute End_Goal_List]
+  if Garrulous? [print End_Goal_List]
+
+end
+
+to roll-dice
+  set dice_to_roll [] ;; TEMP VALUE FOR TESTING REPLACE WITH PROPER COMMAND LATER
+  repeat (1 + random 4) [set dice_to_roll fput "dice" dice_to_roll ]
+  if Garrulous? [print dice_to_roll]
+
+set Total_Successes_Dice_Roll 0
+set Total_Doubles_Dice_Roll 0
+foreach dice_to_roll
+  [let temp-number random 6
+    if temp-number < 3 [set Total_Successes_Dice_Roll Total_Successes_Dice_Roll + 1
+      if Garrulous? [print "Got a blue!"]]
+    if (temp-number = 3) or (temp-number = 4) [ if Garrulous? [print "Got a red!"] ]
+    if temp-number = 5 [set Total_Doubles_Dice_Roll Total_Doubles_Dice_Roll + 1 if Garrulous? [print "Got a yellow!"] ] ]
+
+  if (Total_Successes_Dice_Roll > 0) and (Total_Doubles_Dice_Roll > 0)
+  [ set temp_doubling_list []
+    set temp_doubling_list fput Total_Successes_Dice_Roll temp_doubling_list
+    set temp_doubling_list fput Total_Doubles_Dice_Roll temp_doubling_list
+    set temp_doubling_list sort temp_doubling_list
+    set Total_Successes_Dice_Roll Total_Successes_Dice_Roll + first temp_doubling_list]
+
+  if Garrulous? [print "For a total of " print Total_Successes_Dice_Roll]
+end
+
+to   setup_Boost_list
+  set Boost_list []
+  foreach Attributes_List [ x -> set temp_attribute  [ 3 ]
+                                 set temp_attribute  fput x temp_attribute
+                                 set Boost_list fput temp_attribute  Boost_list]
+  if Garrulous? [print Boost_List]
+
+  set Boost_list shuffle Boost_list
+    ask Monsters  [
+    set Boost first Boost_list
+    set Boost_list but-first Boost_list
+  if item 0 Boost = "Fear" [set Bonus_Fear Bonus_Fear + item 1 Boost
+      if Garrulous? [print Bonus_Fear]]
+  if item 0 Boost = "Attack" [set Bonus_Attack Bonus_Attack + item 1 Boost
+      if Garrulous? [print Bonus_Attack]]
+  if item 0 Boost = "Cute" [set Bonus_Cute Bonus_Cute + item 1 Boost
+      if Garrulous? [print Bonus_Cute]]
+  if item 0 Boost = "Speed" [set Bonus_Speed Bonus_Speed + item 1 Boost
+      if Garrulous? [print Bonus_Speed]]
+  if item 0 Boost = "Intelligence" [set Bonus_Intelligence Bonus_Intelligence + item 1 Boost
+      if Garrulous? [print Bonus_Intelligence]]
+  if item 0 Boost = "Defence" [set Bonus_Defence Bonus_Defence + item 1 Boost
+      if Garrulous? [print Bonus_Defence]]
   ]
-  ask turtles [
-    if Name = "Rabbit" and Body_Position = "Head" [set shape "rabbit"]
-    if Name = "Tortoise" and Body_Position = "Head" [set shape "tortoise"]
-    if Name = "Spider" and Body_Position = "Head" [set shape "spider"]
-    if Name = "Cat" and Body_Position = "Head" [set shape "cat"]
-    if Name = "Parrot" and Body_Position = "Head" [set shape "bird"]
+
+  ;; Secret missions fall into 3 categories
+  ;;              Actions (fight, sabotage, shaftback, go fishing in DNA pool, etc.) that are played at one point in the game and take immediate effect.
+  ;;              Goals (Gain 8 total intelligence, 8 total cute, etc. or end game with 5 different animal body parts, etc. ) kept secret during the entire game and offer possibility of extra points at end
+  ;;              Boosts (+ 3 cute, + 2 intelligence, etc. ) these are played immediately and take immediate effect that endures an unknown amount of time.
+
+
+end
+
+to setup_Starter_Missions_list
+  set Starter_Missions_list [
+    ["Fear" 1]
+    ["Attack" 1]
+    ["Speed" 1]
+    ["Intelligence" 1]
+    ["Cute" 1]
+    ["Fear" 1]
+    ["Defense" 1]
+    ["Cute" 1
+    "Defense" 1]
+    ["Cute" 1
+    "Speed" 1]
+    ["Attack" 1
+    "Fear" 1]
+    ["Attack" 1
+    "Speed" 1]
   ]
 
 end
 
-to  setup_monsters_attributes
-  ask turtles [
-  if Name = "Spider" and Body_Position = "Left_Arm" [set Fear Fear + 1]
-  if Name = "Spider" and Body_Position = "Right_Arm" [set Fear Fear + 1]
-  if Name = "Rabbit" and Body_Position = "Head" [set Cute Cute + 1]
-  if Name = "Rabbit" and Body_Position = "Legs" [set Cute Cute + 1]
-  if Name = "Cat" and Body_Position = "Left_Arm" [set Attack Attack + 1]
-  if Name = "Cat" and Body_Position = "Right_Arm" [set Attack Attack + 1]
-  if Name = "Tortoise" and Body_Position = "Trunk" [set Defence Defence + 2]
-  if Name = "Gecko" and Body_Position = "Legs" [set Speed Speed + 2]
-  if Name = "Parrot" and Body_Position = "Head" [set Intelligence Intelligence + 2]
-  ]
+to Attempt_Mission
 end
 
 to go
   ;; update global variables
-
-  ask turtles [
-  ]
+  Attempt_Mission
+;  roll-dice
   tick
 end
 
@@ -123,9 +250,9 @@ ticks
 30.0
 
 BUTTON
-165
+210
 75
-228
+273
 108
 go
 go
@@ -178,9 +305,26 @@ SWITCH
 158
 Garrulous?
 Garrulous?
-1
+0
 1
 -1000
+
+BUTTON
+125
+75
+188
+108
+NIL
+Go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## ACKNOWLEDGMENT
@@ -397,6 +541,26 @@ Polygon -1 true false 135 195 119 235 95 218 76 210 46 204 60 165
 Polygon -1 true false 75 45 83 77 71 103 86 114 166 78 135 60
 Polygon -7500403 true true 30 136 151 77 226 81 280 119 292 146 292 160 287 170 270 195 195 210 151 212 30 166
 Circle -16777216 true false 215 106 30
+
+fish 3
+false
+0
+Polygon -7500403 true true 137 105 124 83 103 76 77 75 53 104 47 136
+Polygon -7500403 true true 226 194 223 229 207 243 178 237 169 203 167 175
+Polygon -7500403 true true 137 195 124 217 103 224 77 225 53 196 47 164
+Polygon -7500403 true true 40 123 32 109 16 108 0 130 0 151 7 182 23 190 40 179 47 145
+Polygon -7500403 true true 45 120 90 105 195 90 275 120 294 152 285 165 293 171 270 195 210 210 150 210 45 180
+Circle -1184463 true false 244 128 26
+Circle -16777216 true false 248 135 14
+Line -16777216 false 48 121 133 96
+Line -16777216 false 48 179 133 204
+Polygon -7500403 true true 241 106 241 77 217 71 190 75 167 99 182 125
+Line -16777216 false 226 102 158 95
+Line -16777216 false 171 208 225 205
+Polygon -1 true false 252 111 232 103 213 132 210 165 223 193 229 204 247 201 237 170 236 137
+Polygon -1 true false 135 98 140 137 135 204 154 210 167 209 170 176 160 156 163 126 171 117 156 96
+Polygon -16777216 true false 192 117 171 118 162 126 158 148 160 165 168 175 188 183 211 186 217 185 206 181 172 171 164 156 166 133 174 121
+Polygon -1 true false 40 121 46 147 42 163 37 179 56 178 65 159 67 128 59 116
 
 flag
 false
