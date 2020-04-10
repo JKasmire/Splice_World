@@ -5,7 +5,6 @@ Body_Parts_List
 Attributes_List
 Total_Successes_Dice_Roll
 Total_Doubles_Dice_Roll
-dice_to_roll
 temp_doubling_list
 Boost_list
 temp_attribute
@@ -24,12 +23,12 @@ Total_Fear
 Total_Cute
 Total_Speed
 Total_Intelligence
-Bonus_Attack
-Bonus_Defence
-Bonus_Fear
-Bonus_Cute
-Bonus_Speed
-Bonus_Intelligence
+Attack
+Defence
+Fear
+Cute
+Speed
+Intelligence
 Boost
 End_Goal
 Money
@@ -130,29 +129,6 @@ to setup_End_Goal_List
 
 end
 
-to roll-dice
-  set dice_to_roll [] ;; TEMP VALUE FOR TESTING REPLACE WITH PROPER COMMAND LATER
-  repeat (1 + random 4) [set dice_to_roll fput "dice" dice_to_roll ]
-  if Garrulous? [print dice_to_roll]
-
-set Total_Successes_Dice_Roll 0
-set Total_Doubles_Dice_Roll 0
-foreach dice_to_roll
-  [let temp-number random 6
-    if temp-number < 3 [set Total_Successes_Dice_Roll Total_Successes_Dice_Roll + 1
-      if Garrulous? [print "Got a blue!"]]
-    if (temp-number = 3) or (temp-number = 4) [ if Garrulous? [print "Got a red!"] ]
-    if temp-number = 5 [set Total_Doubles_Dice_Roll Total_Doubles_Dice_Roll + 1 if Garrulous? [print "Got a yellow!"] ] ]
-
-  if (Total_Successes_Dice_Roll > 0) and (Total_Doubles_Dice_Roll > 0)
-  [ set temp_doubling_list []
-    set temp_doubling_list fput Total_Successes_Dice_Roll temp_doubling_list
-    set temp_doubling_list fput Total_Doubles_Dice_Roll temp_doubling_list
-    set temp_doubling_list sort temp_doubling_list
-    set Total_Successes_Dice_Roll Total_Successes_Dice_Roll + first temp_doubling_list]
-
-  if Garrulous? [print "For a total of " print Total_Successes_Dice_Roll]
-end
 
 to   setup_Boost_list
   set Boost_list []
@@ -165,18 +141,18 @@ to   setup_Boost_list
     ask Monsters  [
     set Boost first Boost_list
     set Boost_list but-first Boost_list
-  if item 0 Boost = "Fear" [set Bonus_Fear Bonus_Fear + item 1 Boost
-      if Garrulous? [print Bonus_Fear]]
-  if item 0 Boost = "Attack" [set Bonus_Attack Bonus_Attack + item 1 Boost
-      if Garrulous? [print Bonus_Attack]]
-  if item 0 Boost = "Cute" [set Bonus_Cute Bonus_Cute + item 1 Boost
-      if Garrulous? [print Bonus_Cute]]
-  if item 0 Boost = "Speed" [set Bonus_Speed Bonus_Speed + item 1 Boost
-      if Garrulous? [print Bonus_Speed]]
-  if item 0 Boost = "Intelligence" [set Bonus_Intelligence Bonus_Intelligence + item 1 Boost
-      if Garrulous? [print Bonus_Intelligence]]
-  if item 0 Boost = "Defence" [set Bonus_Defence Bonus_Defence + item 1 Boost
-      if Garrulous? [print Bonus_Defence]]
+  if item 0 Boost = "Fear" [set Fear Fear + item 1 Boost
+      if Garrulous? [print Fear]]
+  if item 0 Boost = "Attack" [set Attack Attack + item 1 Boost
+      if Garrulous? [print Attack]]
+  if item 0 Boost = "Cute" [set Cute Cute + item 1 Boost
+      if Garrulous? [print Cute]]
+  if item 0 Boost = "Speed" [set Speed Speed + item 1 Boost
+      if Garrulous? [print Speed]]
+  if item 0 Boost = "Intelligence" [set Intelligence Intelligence + item 1 Boost
+      if Garrulous? [print Intelligence]]
+  if item 0 Boost = "Defence" [set Defence Defence + item 1 Boost
+      if Garrulous? [print Defence]]
   ]
 
   ;; Secret missions fall into 3 categories
@@ -205,15 +181,76 @@ to setup_Starter_Missions_list
     ["Attack" 1
     "Speed" 1]
   ]
+  set Starter_Missions_List shuffle Starter_Missions_List
+end
+
+to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask Monsters" at the beginning of the command
+    let My_Mission first Starter_Missions_List
+    set Starter_Missions_List but-first Starter_Missions_List
+  if Garrulous? [  print (word "I, " Name ", need " item 1 My_Mission " " item 0 My_Mission " for this mission.") ] ; at the moment this assumes missions only have 1 attribute - NEED TO ADD CONDITIONAL LENGTH OF MISSION LIST COMMANDS
+  if item 0 My_Mission = "Attack" [roll-dice Total_Attack  item 1 My_Mission]
+  if item 0 My_Mission = "Cute" [roll-dice Total_Cute item 1 My_Mission]
+  if item 0 My_Mission = "Defence" [roll-dice Total_Defence item 1 My_Mission]
+  if item 0 My_Mission = "Fear" [roll-dice Total_Fear item 1 My_Mission]
+  if item 0 My_Mission = "Intelligence" [roll-dice Total_Intelligence item 1 My_Mission]
+  if item 0 My_Mission = "Speed" [roll-dice Total_Speed item 1 My_Mission]
+  ;; identify attributes needed to complete mission
+  ;; identify necessary success to complete mission
+  ;; roll total relevant attribute dice
+  ;; record success
+  ;; remove mission from list
+  ;; Does attempting a mission remove it from missions to attempt pile? or do attempted but not completed missions remain for other players to attempt?
+  ;; add cooperative mission aspect later
 
 end
 
-to Attempt_Mission
+
+to roll-dice [dice_to_roll bar_to_pass]
+  if Garrulous? [print (word "Rolling " dice_to_roll " in order to get at least " bar_to_pass " blues to complete mission.") ]
+  set Total_Successes_Dice_Roll 0
+  set Total_Doubles_Dice_Roll 0
+  repeat dice_to_roll
+  [let temp-number random 6
+    if temp-number < 3 [set Total_Successes_Dice_Roll Total_Successes_Dice_Roll + 1
+      if Garrulous? [print "Got a blue!"]]
+    if (temp-number = 3) or (temp-number = 4) [ if Garrulous? [print "Got a red!"] ]
+    if temp-number = 5 [set Total_Doubles_Dice_Roll Total_Doubles_Dice_Roll + 1 if Garrulous? [print "Got a yellow!"] ] ]
+
+  if (Total_Successes_Dice_Roll > 0) and (Total_Doubles_Dice_Roll > 0)
+  [ set temp_doubling_list []
+    set temp_doubling_list fput Total_Successes_Dice_Roll temp_doubling_list
+    set temp_doubling_list fput Total_Doubles_Dice_Roll temp_doubling_list
+    set temp_doubling_list sort temp_doubling_list
+    set Total_Successes_Dice_Roll Total_Successes_Dice_Roll + first temp_doubling_list]
+  ifelse Total_Successes_Dice_Roll > bar_to_pass
+    [ set Money Money + 1
+      if Garrulous? [print (word "In the end, I rolled " Total_Successes_Dice_Roll " blues, so I have successfully completed the mission.")]]
+    [print (word "And I rolled " Total_Successes_Dice_Roll " blues, so I have not succeeded this time. Boo.")]
+end
+
+to Calculate_Total_Attributes
+  ask Monsters [
+    set Total_Attack sum [Attack] of turtles with [Name = [Name] of myself]
+    set Total_Defence sum [Defence] of turtles with [Name = [Name] of myself]
+    set Total_Cute sum [Cute] of turtles with [Name = [Name] of myself]
+    set Total_Fear sum [Fear] of turtles with [Name = [Name] of myself]
+    set Total_Intelligence sum [Intelligence] of turtles with [Name = [Name] of myself]
+    set Total_Speed sum [Speed] of turtles with [Name = [Name] of myself]
+
+
+  if Garrulous? [  print Name
+      if Total_Attack > 0 [print "Total Attack" print Total_Attack]
+      if Total_Cute > 0 [print "Total Cute" print Total_Cute]
+      if Total_Defence > 0 [print "Total Defence" print Total_Defence]
+      if Total_Fear > 0 [print "Total Fear" print Total_Fear]
+      if Total_Intelligence > 0 [print "Total Intelligence" print Total_Intelligence]
+      if Total_Speed > 0 [print "Total Speed" print Total_Speed]  ] ]
 end
 
 to go
   ;; update global variables
-  Attempt_Mission
+  Calculate_Total_Attributes
+  ask Monsters [Attempt_Mission]
 ;  roll-dice
   tick
 end
