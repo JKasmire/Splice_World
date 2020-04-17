@@ -24,33 +24,36 @@ Total_Cute
 Total_Speed
 Total_Intelligence
 Attack
+Cute
 Defence
 Fear
-Cute
-Speed
 Intelligence
+Speed
 Boost
 End_Goal
 Money
 Points
+My_Mission
+Number_Attributes_On_My_Mission
+Mission_Attribute_Successes
 ]
 
 Body_Parts-own [
 Name
 Body_Position
 Attack
+Cute
 Defence
 Fear
-Cute
-Speed
 Intelligence
+Speed
 ]
 
 to setup
   clear-all
   set Basic_Monsters_List ["bug" "tortoise" "rabbit" "spider" "bird" "cat"]
   set Body_Parts_List ["Head" "Trunk" "Legs" "Right Arm" "Left Arm"]
-  set Attributes_List ["Attack" "Defence" "Cute" "Fear" "Intelligence" "Speed"]
+  set Attributes_List ["Attack" "Cute" "Defence" "Fear" "Intelligence" "Speed"]
   if Garrulous? [print Basic_Monsters_List
                  print Body_Parts_List
                  print Attributes_List ]
@@ -120,16 +123,6 @@ to setup_Monsters
 
 end
 
-to setup_End_Goal_List
-  set End_Goal_List []
-  foreach Attributes_List [ x -> set temp_attribute  [ 8 ]
-                                 set temp_attribute  fput x temp_attribute
-                                 set End_Goal_List fput temp_attribute End_Goal_List]
-  if Garrulous? [print End_Goal_List]
-
-end
-
-
 to   setup_Boost_list
   set Boost_list []
   foreach Attributes_List [ x -> set temp_attribute  [ 3 ]
@@ -154,61 +147,73 @@ to   setup_Boost_list
   if item 0 Boost = "Defence" [set Defence Defence + item 1 Boost
       if Garrulous? [print Defence]]
   ]
-
   ;; Secret missions fall into 3 categories
   ;;              Actions (fight, sabotage, shaftback, go fishing in DNA pool, etc.) that are played at one point in the game and take immediate effect.
   ;;              Goals (Gain 8 total intelligence, 8 total cute, etc. or end game with 5 different animal body parts, etc. ) kept secret during the entire game and offer possibility of extra points at end
   ;;              Boosts (+ 3 cute, + 2 intelligence, etc. ) these are played immediately and take immediate effect that endures an unknown amount of time.
-
-
 end
 
 to setup_Starter_Missions_list
-  set Starter_Missions_list [
-    ["Fear" 1]
-    ["Attack" 1]
-    ["Speed" 1]
-    ["Intelligence" 1]
-    ["Cute" 1]
-    ["Fear" 1]
-    ["Defense" 1]
-    ["Cute" 1
-    "Defense" 1]
-    ["Cute" 1
-    "Speed" 1]
-    ["Attack" 1
-    "Fear" 1]
-    ["Attack" 1
-    "Speed" 1]
-  ]
+  set Starter_Missions_list []
+  foreach Attributes_List [ x -> set temp_attribute  [ 1 ]
+                                 let y word "Total_" x
+                                 set temp_attribute  fput y temp_attribute
+                                 set Starter_Missions_list fput temp_attribute  Starter_Missions_list]
+  set Starter_Missions_list fput ["Total_Cute" 1 "Total_Defence" 1] Starter_Missions_list
+  set Starter_Missions_list fput ["Total_Cute" 1 "Total_Speed" 1] Starter_Missions_list
+  set Starter_Missions_list fput ["Total_Attack" 1 "Total_Fear" 1] Starter_Missions_list
+  set Starter_Missions_list fput ["Total_Attack" 1 "Total_Speed" 1] Starter_Missions_list
   set Starter_Missions_List shuffle Starter_Missions_List
+ if Garrulous? [print (word "The missions lists consists of " Starter_Missions_List)]
+end
+
+to setup_End_Goal_List
+  set End_Goal_List []
+  foreach Attributes_List [ x -> set temp_attribute  [ 8 ]
+                                 set temp_attribute  fput x temp_attribute
+                                 set End_Goal_List fput temp_attribute End_Goal_List]
+  if Garrulous? [print (word "The list of end goals consists of " End_Goal_List)]
 end
 
 to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask Monsters" at the beginning of the command
-    let My_Mission first Starter_Missions_List
-    set Starter_Missions_List but-first Starter_Missions_List
-  if Garrulous? [  print (word "I, " Name ", need " item 1 My_Mission " " item 0 My_Mission " for this mission.") ] ; at the moment this assumes missions only have 1 attribute - NEED TO ADD CONDITIONAL LENGTH OF MISSION LIST COMMANDS
-  if item 0 My_Mission = "Attack" [roll-dice Total_Attack  item 1 My_Mission]
-  if item 0 My_Mission = "Cute" [roll-dice Total_Cute item 1 My_Mission]
-  if item 0 My_Mission = "Defence" [roll-dice Total_Defence item 1 My_Mission]
-  if item 0 My_Mission = "Fear" [roll-dice Total_Fear item 1 My_Mission]
-  if item 0 My_Mission = "Intelligence" [roll-dice Total_Intelligence item 1 My_Mission]
-  if item 0 My_Mission = "Speed" [roll-dice Total_Speed item 1 My_Mission]
-  ;; identify attributes needed to complete mission
-  ;; identify necessary success to complete mission
-  ;; roll total relevant attribute dice
-  ;; record success
-  ;; remove mission from list
-  ;; Does attempting a mission remove it from missions to attempt pile? or do attempted but not completed missions remain for other players to attempt?
-  ;; add cooperative mission aspect later
+  set My_Mission []
+  set Mission_Attribute_Successes 0
+  set Number_Attributes_On_My_Mission 0
+  set My_Mission first Starter_Missions_List
+  set Starter_Missions_List but-first Starter_Missions_List
+  set Number_Attributes_On_My_Mission (length My_Mission / 2)
+  if Garrulous? [  print "" print (word "I, " Name ", need " Number_Attributes_On_My_Mission " attribute for this mission.") ]
+
+  while [length My_Mission > 0] [
+  if Garrulous? [  print (word "I need " item 1 My_Mission " " item 0 My_Mission ".") ]
+  if item 0 My_Mission = "Total_Attack" [roll-dice Total_Attack  item 1 My_Mission]
+  if item 0 My_Mission = "Total_Cute" [roll-dice Total_Cute item 1 My_Mission]
+  if item 0 My_Mission = "Total_Defence" [roll-dice Total_Defence item 1 My_Mission]
+  if item 0 My_Mission = "Total_Fear" [roll-dice Total_Fear item 1 My_Mission]
+  if item 0 My_Mission = "Total_Intelligence" [roll-dice Total_Intelligence item 1 My_Mission]
+  if item 0 My_Mission = "Total_Speed" [roll-dice Total_Speed item 1 My_Mission]
+      repeat 2 [set My_Mission but-first My_Mission] ]
+
+  if length My_Mission = 0
+  [ifelse Mission_Attribute_Successes = Number_Attributes_On_My_Mission
+    [ set Money Money + 1 ;Adjust money as needed. Not all missions will reward only 1 money
+      if Garrulous? [print "Succeeded on all attributes and so succeeded on the mission."]]
+    [print "Failed on at least one attribute and so failed on the mission."] ]
+
+  ;; Need to add cooperative mission aspect at some point
 
 end
 
 
 to roll-dice [dice_to_roll bar_to_pass]
-  if Garrulous? [print (word "Rolling " dice_to_roll " in order to get at least " bar_to_pass " blues to complete mission.") ]
+  if Garrulous? [
+    ifelse dice_to_roll < bar_to_pass
+    [print (word "I need at least " bar_to_pass " blues to complete this attribute test for this mission, but I only have " dice_to_roll "so I will fail unless I cooperate.")]
+    [print (word "Rolling " dice_to_roll " dice in order to get at least " bar_to_pass " blues to complete this attribute test for this mission.") ] ]
+
   set Total_Successes_Dice_Roll 0
   set Total_Doubles_Dice_Roll 0
+
   repeat dice_to_roll
   [let temp-number random 6
     if temp-number < 3 [set Total_Successes_Dice_Roll Total_Successes_Dice_Roll + 1
@@ -222,10 +227,11 @@ to roll-dice [dice_to_roll bar_to_pass]
     set temp_doubling_list fput Total_Doubles_Dice_Roll temp_doubling_list
     set temp_doubling_list sort temp_doubling_list
     set Total_Successes_Dice_Roll Total_Successes_Dice_Roll + first temp_doubling_list]
-  ifelse Total_Successes_Dice_Roll > bar_to_pass
-    [ set Money Money + 1
-      if Garrulous? [print (word "In the end, I rolled " Total_Successes_Dice_Roll " blues, so I have successfully completed the mission.")]]
-    [print (word "And I rolled " Total_Successes_Dice_Roll " blues, so I have not succeeded this time. Boo.")]
+
+  print (word "Including doubles, I got " Total_Successes_Dice_Roll " blues, and I needed " bar_to_pass " so..." )
+  ifelse Total_Successes_Dice_Roll >= bar_to_pass
+    [ set Mission_Attribute_Successes Mission_Attribute_Successes + 1 print "I succeded on this attribute!"]
+    [print "Failed on this attribute"]
 end
 
 to Calculate_Total_Attributes
