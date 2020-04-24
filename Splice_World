@@ -1,3 +1,5 @@
+extensions [csv]
+
 globals [
 Game_Round
 Basic_Monsters_List
@@ -36,10 +38,13 @@ Points
 My_Mission
 Number_Attributes_On_My_Mission
 Mission_Attribute_Successes
+Mission_Money_Reward
+Mission_Points_Reward
 ]
 
 Body_Parts-own [
 Name
+Body_Part_Name
 Body_Position
 Attack
 Cute
@@ -54,9 +59,12 @@ to setup
   set Basic_Monsters_List ["bug" "tortoise" "rabbit" "spider" "bird" "cat"]
   set Body_Parts_List ["Head" "Trunk" "Legs" "Right Arm" "Left Arm"]
   set Attributes_List ["Attack" "Cute" "Defence" "Fear" "Intelligence" "Speed"]
+  set Starter_Missions_list csv:from-file "Starter_Missions.csv"
+  set Starter_Missions_list shuffle Starter_Missions_list
   if Garrulous? [print Basic_Monsters_List
                  print Body_Parts_List
-                 print Attributes_List ]
+                 print Attributes_List
+                 print Starter_Missions_list]
   setup_Monsters
   reset-ticks
 end
@@ -78,6 +86,7 @@ to setup_Monsters
   ask Monsters [
     hatch-Body_Parts 1 [
       set size 2
+      set Body_Part_Name Name
     foreach Attributes_List [ [x] -> set x 0 ]
       set Body_Position "Head"
       set shape "face happy"
@@ -87,12 +96,14 @@ to setup_Monsters
     hatch-Body_Parts 1 [
       set Body_Position "Trunk"
       set size 2
+      set Body_Part_Name Name
       foreach Attributes_List [ [x] -> set x 0]
       set shape "pentagon"
       set ycor ycor - 4
       if Name = "tortoise" [set Defence Defence + 2] ]
     hatch-Body_Parts 1 [
       set size 2
+      set Body_Part_Name Name
     foreach Attributes_List [ [x] -> set x 0]
       set Body_Position "Legs"
       set shape "campsite"
@@ -101,6 +112,7 @@ to setup_Monsters
       if Name = "rabbit" [set Cute Cute + 1] ]
     hatch-Body_Parts 1 [
       set size 2
+      set Body_Part_Name Name
     foreach Attributes_List [ [x] -> set x 0]
       set Body_Position "Left_Arm"
       set shape "footprint other"
@@ -110,6 +122,7 @@ to setup_Monsters
       if Name = "cat" [set Attack Attack + 1] ]
     hatch-Body_Parts 1 [
       set size 2
+      set Body_Part_Name Name
     foreach Attributes_List [ [x] -> set x 0]
       set Body_Position "Right_Arm"
       set shape "footprint other"
@@ -118,7 +131,6 @@ to setup_Monsters
       if Name = "spider" [set Fear Fear + 1]
       if Name = "cat" [set Attack Attack + 1] ] ]
   setup_Boost_list
-  setup_Starter_Missions_list
   setup_End_Goal_List
 
 end
@@ -153,20 +165,6 @@ to   setup_Boost_list
   ;;              Boosts (+ 3 cute, + 2 intelligence, etc. ) these are played immediately and take immediate effect that endures an unknown amount of time.
 end
 
-to setup_Starter_Missions_list
-  set Starter_Missions_list []
-  foreach Attributes_List [ x -> set temp_attribute  [ 1 ]
-                                 let y word "Total_" x
-                                 set temp_attribute  fput y temp_attribute
-                                 set Starter_Missions_list fput temp_attribute  Starter_Missions_list]
-  set Starter_Missions_list fput ["Total_Cute" 1 "Total_Defence" 1] Starter_Missions_list
-  set Starter_Missions_list fput ["Total_Cute" 1 "Total_Speed" 1] Starter_Missions_list
-  set Starter_Missions_list fput ["Total_Attack" 1 "Total_Fear" 1] Starter_Missions_list
-  set Starter_Missions_list fput ["Total_Attack" 1 "Total_Speed" 1] Starter_Missions_list
-  set Starter_Missions_List shuffle Starter_Missions_List
- if Garrulous? [print (word "The missions lists consists of " Starter_Missions_List)]
-end
-
 to setup_End_Goal_List
   set End_Goal_List []
   foreach Attributes_List [ x -> set temp_attribute  [ 8 ]
@@ -179,10 +177,19 @@ to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask
   set My_Mission []
   set Mission_Attribute_Successes 0
   set Number_Attributes_On_My_Mission 0
+  set Mission_Money_Reward 0
+  set Mission_Points_Reward 0
   set My_Mission first Starter_Missions_List
   set Starter_Missions_List but-first Starter_Missions_List
-  set Number_Attributes_On_My_Mission (length My_Mission / 2)
-  if Garrulous? [  print "" print (word "I, " Name ", need " Number_Attributes_On_My_Mission " attribute for this mission.") ]
+
+  set Mission_Points_Reward last My_Mission
+  set My_Mission but-last My_Mission
+  set Mission_Money_Reward last My_Mission
+  set My_Mission but-last My_Mission
+
+  set Number_Attributes_On_My_Mission ( length My_Mission  / 2 )
+
+  if Garrulous? [  print "" print (word "I, " Name ", need " Number_Attributes_On_My_Mission " attribute(s) for this mission to earn " Mission_Money_Reward " in cash and " Mission_Points_Reward " in points." ) ]
 
   while [length My_Mission > 0] [
   if Garrulous? [  print (word "I need " item 1 My_Mission " " item 0 My_Mission ".") ]
@@ -196,7 +203,8 @@ to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask
 
   if length My_Mission = 0
   [ifelse Mission_Attribute_Successes = Number_Attributes_On_My_Mission
-    [ set Money Money + 1 ;Adjust money as needed. Not all missions will reward only 1 money
+    [ set Money Money + Mission_Money_Reward
+      set Points Points + Mission_Points_Reward
       if Garrulous? [print "Succeeded on all attributes and so succeeded on the mission."]]
     [print "Failed on at least one attribute and so failed on the mission."] ]
 
@@ -208,7 +216,7 @@ end
 to roll-dice [dice_to_roll bar_to_pass]
   if Garrulous? [
     ifelse dice_to_roll < bar_to_pass
-    [print (word "I need at least " bar_to_pass " blues to complete this attribute test for this mission, but I only have " dice_to_roll "so I will fail unless I cooperate.")]
+    [print (word "I need at least " bar_to_pass " blues to complete this attribute test for this mission, but I only have " dice_to_roll " so I will fail unless I cooperate.")]
     [print (word "Rolling " dice_to_roll " dice in order to get at least " bar_to_pass " blues to complete this attribute test for this mission.") ] ]
 
   set Total_Successes_Dice_Roll 0
@@ -231,7 +239,7 @@ to roll-dice [dice_to_roll bar_to_pass]
   print (word "Including doubles, I got " Total_Successes_Dice_Roll " blues, and I needed " bar_to_pass " so..." )
   ifelse Total_Successes_Dice_Roll >= bar_to_pass
     [ set Mission_Attribute_Successes Mission_Attribute_Successes + 1 print "I succeded on this attribute!"]
-    [print "Failed on this attribute"]
+    [print "Failed on this attribute."]
 end
 
 to Calculate_Total_Attributes

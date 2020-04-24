@@ -1,0 +1,12 @@
+Total_Attack,1,1,1
+Total_Cute,1,1,1
+Total_Defence,1,1,1
+Total_Fear,1,1,1
+Total_Intelligence,1,1,1
+Total_Speed,1,1,1
+Total_Cute,1,Total_Speed,1,2,1
+Total_Cute,1,Total_Defence,1,2,1
+Total_Attack,1,Total_Fear,1,2,1
+Total_Defence,1,Total_Fear,1,2,1
+Total_Attack,1,Total_Intelligence,1,2,1
+Total_Speed,1,Total_Intelligence,1,2,1
