@@ -266,7 +266,7 @@ end
 to go
   ;; update global variables
   Calculate_Total_Attributes  ;;; Not summing properly over the attributes of body-parts, only capturing the attibutes of self that come from the boost.
-                              ;;; This is not an error. I was checking it after set-up, but it should only apply after a "go" as it could be updated each round.
+
   ask Monsters [Attempt_Mission]
   ask Monsters [Shop_for_body_parts]
 ;  roll-dice
