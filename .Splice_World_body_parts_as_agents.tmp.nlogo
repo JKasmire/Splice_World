@@ -51,94 +51,98 @@ DNA_pool
 ]
 
 Body_Parts-own [
-Body_Part_Name
+From_What_Animal
 Body_Position
+Cost
 ]
 
 to setup
   clear-all
   set Basic_Monsters_List ["bug" "tortoise" "rabbit" "spider" "bird" "cat"]
-  set Body_Parts_List ["Head" "Trunk" "Legs" "Right Arm" "Left Arm"]
   set Attributes_List ["Attack" "Cute" "Defence" "Fear" "Intelligence" "Speed"]
   set Starter_Missions_list csv:from-file "Starter_Missions.csv"
   set Starter_Missions_list shuffle Starter_Missions_list
-  set Round_1_Body_Parts_list csv:from-file "Level_1_Parts_min.csv"
-  set Round_1_Body_Parts_list shuffle Round_1_Body_Parts_list
   if Garrulous? [print "All lists set up!"]
   setup_Monsters
+  Calculate_Total_Attributes
   reset-ticks
 end
 
 to setup_Monsters
-  create-Monsters Number_Players
-  set Basic_Monsters_List shuffle Basic_Monsters_List
-  ask Monsters [
-    set Name first Basic_Monsters_List
-    set Theoretical? False
-    set Basic_Monsters_List but-first Basic_Monsters_List
-    set size 2
-    set Money 5
-    set Points 0]
-  ask Monsters [ set shape Name]
+  create-Monsters Number_Players                                    ;;; Creates starter monsters equal to the number of players
+  set Basic_Monsters_List shuffle Basic_Monsters_List               ;;; Shuffles the list of Basic or Starter monsters so that games with fewer than the max number of players will not always get the same monsters or in the same order
+  ask Monsters [                                                    ;;;
+    set Name first Basic_Monsters_List                              ;;; The first monster sets its name to the first on the recently shuffled list of basic or starter monsters. Effectively, player one draws a card to see what monster to play as
+    set Theoretical? False                                          ;;; This may or may not be used long term... currently it is expected to be useful for determining which body part to buy
+    set Basic_Monsters_List but-first Basic_Monsters_List           ;;; Removes the first monster from the basic monster list so the next player will draw a different "card"
+    set size 2                                                      ;;; Adjusts size to be more visible
+    set Money 5                                                     ;;; Gets a starting bank balance
+    set Points 0                                                    ;;; Ensures the starting points balance is at zero
+    set shape Name]                                                 ;;; Sets shape to improve visibility of game play
 
-  layout-circle Monsters 10
-  ask Monsters [      set ycor ycor + 3 ]
-  ask Monsters [
-    hatch-Body_Parts 1 [
-      set size 2
-      set Body_Part_Name Name
-    foreach Attributes_List [ [x] -> set x 0 ]
-      set Body_Position "Head"
-      set shape "face happy"
-      set ycor ycor - 2
-      if Name = "rabbit" [set Cute Cute + 1]
-      if Name = "bird" [set Intelligence Intelligence + 2]]
-    hatch-Body_Parts 1 [
-      set Body_Position "Trunk"
-      set size 2
-      set Body_Part_Name Name
-      foreach Attributes_List [ [x] -> set x 0]
-      set shape "pentagon"
-      set ycor ycor - 4
-      if Name = "tortoise" [set Defence Defence + 2] ]
-    hatch-Body_Parts 1 [
-      set size 2
-      set Body_Part_Name Name
-    foreach Attributes_List [ [x] -> set x 0]
-      set Body_Position "Legs"
-      set shape "campsite"
-      set ycor ycor - 6
-      if Name = "bug" [set Speed Speed + 2]
-      if Name = "rabbit" [set Cute Cute + 1] ]
-    hatch-Body_Parts 1 [
-      set size 2
-      set Body_Part_Name Name
-    foreach Attributes_List [ [x] -> set x 0]
-      set Body_Position "Left_Arm"
-      set shape "footprint other"
-      set ycor ycor - 4
-      set xcor xcor - 2
-      if Name = "spider" [set Fear Fear + 1]
-      if Name = "cat" [set Attack Attack + 1] ]
-    hatch-Body_Parts 1 [
-      set size 2
-      set Body_Part_Name Name
-    foreach Attributes_List [ [x] -> set x 0]
-      set Body_Position "Right_Arm"
-      set shape "footprint other"
-      set ycor ycor - 4
-      set xcor xcor + 2
-      if Name = "spider" [set Fear Fear + 1]
-      if Name = "cat" [set Attack Attack + 1] ] ]
-  ask Body_Parts [
-    hatch 1 [
+  layout-circle Monsters 10                                         ;;; once all monsters have been created, at least in the basic sense, they are organised into a circle
+  ask Monsters [      set ycor ycor + 3 ]                           ;;; The monsters all then take three steps toward the top of the screen to make room for their body parts to be visible below them without  without overlapping or getting weird
+
+  file-close
+  file-open "Level_1_Parts_min.csv"
+  while [not file-at-end?] [
+    create-Body_Parts 1 [
+      set From_What_Animal file-read
       set Theoretical? True
-      set size 0 ] ]
+      set Body_Position file-read
+      set Attack file-read
+      set Cute file-read
+      set Defence file-read
+      set Fear file-read
+      set Intelligence file-read
+      set Speed file-read
+      set Cost file-read
+      set hidden? True    ]  ]
+  ask Body_Parts [
+    if Body_Position =  "head" [set shape "face happy"]
+    if Body_Position = "trunk" [set shape "pentagon"]
+    if Body_Position = "legs"  [set shape "triangle"]
+    if (Body_Position = "Left_Arm") or  (Body_Position = "Right_Arm") [set shape "footprint other"] ]
+  ask Monsters [purchase-body-part]
   setup_Boost_list
   setup_End_Goal_List
   setup_DNA_pool
 
 end
+
+to purchase-body-part
+  if any? Body_Parts with [Cost < Money] [                             ;; step 1 checks "can i afford this?" to create subset of possible body parts to purchase, if so, continue with purchase
+    ifelse count Body_Parts with [Name = [Name] of myself] < 5  [      ;; ifelse count body parts assigned to me < 5, use starter process to assign body parts to me
+    ask one-of Body_Parts with [From_What_Animal = [Name] of myself] [
+      set hidden? False
+      set Name = [Name] of myself
+      move-to self
+      if Body_Position =  "head" [set xcor xcor - 2]
+      if Body_Position = "trunk" [set xcor xcor - 3]
+      if Body_Position = "legs"  [set xcor xcor - 4]
+      if Body_Position = "Left_Arm" [set xcor xcor - 3 set ycor ycor + 1]
+      if Body_Position = "Right_Arm" [set xcor xcor - 3 set ycor ycor  1]
+
+      ]
+    []                                                                                                                             ;;[use non-starter-parts decision process]
+  ;; once decision is made, moster asks body part to move-to self or myself (check grammar)
+  ;; monster asks body part to move to correct position relative to self according to body position of body part
+
+  ]
+
+
+;; non-starter-decision process -  select one from non-empty sublist that maximises potential total attributes
+  ;; ;; calculate potential total attributes with this potential body part, compare to current total attributes, if potential > current, decide to purchase
+
+
+;; purchase a body part - remove part from DNA_pool, subtacting cost from Money
+;; apply purchased part to own body
+;; Refill DNA_pool if needed
+
+
+
+end
+
 
 to   setup_Boost_list
   set Boost_list []
@@ -265,24 +269,12 @@ end
 
 to go
   ;; update global variables
-  Calculate_Total_Attributes  ;;; Not summing properly over the attributes of body-parts, only capturing the attibutes of self that come from the boost.
-
   ask Monsters [Attempt_Mission]
-  ask Monsters [Shop_for_body_parts]
-;  roll-dice
+;  ask Monsters [Shop_for_body_parts]
+  Calculate_Total_Attributes  ;;; This re-calculation of attributes from body parts + boosts happens at end of turn
+                              ;;; - after any new body part shopping - so newly purchased body parts cannot be used in missions attepmted on same turn as their purchase
+
   tick
-end
-
-to Shop_for_body_parts
-;; decide whether I can/should purchase a body part - do I have enough money to purchase any of these? compare my Money to cost of all body parts
-;; ;; create a sublist Can_Purchase_DNA_pool with only items from DNA_pool where cost < Money
-;; ;; select one from non-empty sublist that maximises potential total attributes
-  ;; ;; calculate potential total attributes with this potential body part, compare to current total attributes, if potential > current, decide to purchase
-
-
-;; purchase a body part - remove part from DNA_pool, subtacting cost from Money
-;; apply purchased part to own body
-;; Refill DNA_pool if needed
 end
 
 ; Copyright 2020 Dr. J. Kasmire
