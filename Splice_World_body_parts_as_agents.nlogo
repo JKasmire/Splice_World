@@ -47,7 +47,6 @@ Number_Attributes_On_My_Mission
 Mission_Attribute_Successes
 Mission_Money_Reward
 Mission_Points_Reward
-DNA_pool
 ]
 
 Body_Parts-own [
@@ -83,64 +82,82 @@ to setup_Monsters
   layout-circle Monsters 10                                         ;;; once all monsters have been created, at least in the basic sense, they are organised into a circle
   ask Monsters [      set ycor ycor + 3 ]                           ;;; The monsters all then take three steps toward the top of the screen to make room for their body parts to be visible below them without  without overlapping or getting weird
 
-  file-close
-  file-open "Level_1_Parts_min.csv"
-  while [not file-at-end?] [
-    create-Body_Parts 1 [
-      set From_What_Animal file-read
+  file-close-all                                                    ;;; close all open files before opening the body parts file
+  if not file-exists? "Level_1_Parts_min.csv" [
+    user-message "No file 'Level_1_Parts_min.csv' exists!"
+    stop]
+
+  file-open "Level_1_Parts_min.csv"                                 ;;; open the file with the body parts data
+  while [ not file-at-end? ] [                                      ;;; We'll read all the data in a single loop
+    let data csv:from-row file-read-line                            ;;; here the CSV extension grabs a single line and puts the read data in a list
+    create-Body_Parts 1 [                                           ;;; now we can use that list to create a turtle with the saved properties
+      set Name ""
+      set From_What_Animal item 0 data
       set Theoretical? True
-      set Body_Position file-read
-      set Attack file-read
-      set Cute file-read
-      set Defence file-read
-      set Fear file-read
-      set Intelligence file-read
-      set Speed file-read
-      set Cost file-read
-      set hidden? True    ]  ]
+      set Body_Position item 1 data
+      set Attack item 2 data
+      set Cute item 3 data
+      set Defence item 4 data
+      set Fear item 5 data
+      set Intelligence item 6 data
+      set Speed item 7 data
+      set Cost item 8 data
+      set hidden? True
+    ]
+  ]
+
+file-close ; make sure to close the file
   ask Body_Parts [
     if Body_Position =  "head" [set shape "face happy"]
     if Body_Position = "trunk" [set shape "pentagon"]
     if Body_Position = "legs"  [set shape "triangle"]
-    if (Body_Position = "Left_Arm") or  (Body_Position = "Right_Arm") [set shape "footprint other"] ]
+    if Body_Position = "left_arm" [set shape "footprint other"]
+    if Body_Position = "right_arm" [set shape "footprint other"] ]
   ask Monsters [purchase-body-part]
   setup_Boost_list
   setup_End_Goal_List
-  setup_DNA_pool
 
 end
 
 to purchase-body-part
-  if any? Body_Parts with [Cost < Money] [                             ;; step 1 checks "can i afford this?" to create subset of possible body parts to purchase, if so, continue with purchase
-    ifelse count Body_Parts with [Name = [Name] of myself] < 5  [      ;; ifelse count body parts assigned to me < 5, use starter process to assign body parts to me
-    ask one-of Body_Parts with [From_What_Animal = [Name] of myself] [
-      set hidden? False
-      set Name [Name] of myself
-      move-to self
-      if Body_Position =  "head" [set xcor xcor - 2]
-      if Body_Position = "trunk" [set xcor xcor - 3]
-      if Body_Position = "legs"  [set xcor xcor - 4]
-      if Body_Position = "Left_Arm" [set xcor xcor - 3 set ycor ycor + 1]
-        if Body_Position = "Right_Arm" [set xcor xcor - 3 set ycor ycor - 1] ] ]
-    []                                                                                                                             ;;[use non-starter-parts decision process]
-  ;; once decision is made, moster asks body part to move-to self or myself (check grammar)
-  ;; monster asks body part to move to correct position relative to self according to body position of body part
-
-  ]
-
-
-;; non-starter-decision process -  select one from non-empty sublist that maximises potential total attributes
-  ;; ;; calculate potential total attributes with this potential body part, compare to current total attributes, if potential > current, decide to purchase
-
-
-;; purchase a body part - remove part from DNA_pool, subtacting cost from Money
-;; apply purchased part to own body
-;; Refill DNA_pool if needed
-
-
-
+  let my-purchasable-pool Body_Parts with [ (Cost < [Money] of myself ) and (Name = "")]     ;;; step 1 creates an agent-set of body-parts that are not assigned and within my budget
+  if my-purchasable-pool != nobody  [                                                        ;;; if the agent-set of purchasable body-parts is not empty, continue with process
+    ifelse count Body_Parts with [Name = [Name] of myself] < 5  [ acquire-starter-parts ]    ;;; ifelse count body parts assigned to me < 5, use starter process to get my basic starter body parts
+    [acquire-upgrade-parts] ]                                                                ;;; if the count of body parts assigned to me is = 5, use the non-starter process to upgrade body part
 end
 
+to acquire-starter-parts
+        ask Body_Parts with [From_What_Animal = [Name] of myself] [
+          set hidden? False
+          set Name [Name] of myself
+          set color [color] of myself
+          move-to myself
+          if Body_Position =  "head" [set ycor ycor - 2]
+          if Body_Position = "trunk" [set ycor ycor - 3]
+          if Body_Position = "legs"  [set ycor ycor - 4]
+          if Body_Position = "left_arm" [set xcor xcor - 1 set ycor ycor - 3]
+        if Body_Position = "right_arm" [set xcor xcor + 1 set ycor ycor - 3] ]
+end
+
+to acquire-upgrade-parts
+  let target one-of Body_Parts with [ (Cost < [Money] of myself ) and (Name = "")]
+    if target != nobody [ ask target [
+      set hidden? False
+      set Name [Name] of myself
+      set color [color] of myself
+      move-to myself
+      if Body_Position =  "head" [set ycor ycor - 2]
+      if Body_Position = "trunk" [set ycor ycor - 3]
+      if Body_Position = "legs"  [set ycor ycor - 4]
+      if Body_Position = "left_arm" [set xcor xcor - 1 set ycor ycor - 3]
+      if Body_Position = "right_arm" [set xcor xcor + 1 set ycor ycor - 3]
+      print (word Name " purchased a " From_What_Animal Body_Position " for" Cost)
+      let old-part one-of other turtles-here
+      if old-part != nobody [ ask old-part [ set Name ""
+                                             set hidden? True
+                                             setxy 0 0 ] ] ]
+    set Money Money - [Cost] of target]
+end
 
 to   setup_Boost_list
   set Boost_list []
@@ -210,13 +227,6 @@ to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask
 
 end
 
-to setup_DNA_pool
-  ask monsters [
-    set DNA_pool []
-    repeat 5 [ set DNA_pool fput first Round_1_Body_Parts_list DNA_pool
-    set Round_1_Body_Parts_list but-first Round_1_Body_Parts_list]
-    if Garrulous? [print DNA_pool]]
-end
 
 to roll-dice [dice_to_roll bar_to_pass]
   if Garrulous? [
@@ -268,7 +278,7 @@ end
 to go
   ;; update global variables
   ask Monsters [Attempt_Mission]
-;  ask Monsters [Shop_for_body_parts]
+  ask Monsters [purchase-body-part]
   Calculate_Total_Attributes  ;;; This re-calculation of attributes from body parts + boosts happens at end of turn
                               ;;; - after any new body part shopping - so newly purchased body parts cannot be used in missions attepmted on same turn as their purchase
 
