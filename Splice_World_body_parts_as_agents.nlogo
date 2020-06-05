@@ -12,9 +12,10 @@ Total_Doubles_Dice_Roll
 temp_doubling_list
 Boost_list
 temp_attribute
-End_Goal_List
-Starter_Missions_list
+Goals_List
+Missions_list
 Round_1_Body_Parts_list
+Cards_list
 ]
 
 breed [Monsters Monster]
@@ -38,8 +39,9 @@ Total_Fear
 Total_Cute
 Total_Speed
 Total_Intelligence
+Hand
 Boost
-End_Goal
+My_Goals
 Money
 Points
 My_Mission
@@ -59,12 +61,23 @@ to setup
   clear-all
   set Basic_Monsters_List ["bug" "tortoise" "rabbit" "spider" "bird" "cat"]
   set Attributes_List ["Attack" "Cute" "Defence" "Fear" "Intelligence" "Speed"]
-  set Starter_Missions_list csv:from-file "Starter_Missions.csv"
-  set Starter_Missions_list shuffle Starter_Missions_list
+  set Cards_list csv:from-file "cards_list_min.csv"
+  set Cards_list shuffle Cards_list
+  set Boost_list csv:from-file "boosts_min.csv"
+  set Missions_list csv:from-file "missions_min.csv"
+  set Goals_List csv:from-file "goals_min.csv"
+
   if Garrulous? [print "All lists set up!"]
   setup_Monsters
   Calculate_Total_Attributes
   reset-ticks
+end
+
+to draw_hand
+  while [length Hand < 5] [
+    let temp_Hand first Cards_list
+    set Hand fput temp_Hand Hand
+    set Cards_list butfirst Cards_list]
 end
 
 to setup_Monsters
@@ -114,9 +127,8 @@ file-close ; make sure to close the file
     if Body_Position = "left_arm" [set shape "footprint other"]
     if Body_Position = "right_arm" [set shape "footprint other"] ]
   ask Monsters [purchase-body-part]
-  setup_Boost_list
-  setup_End_Goal_List
-
+  ask Monsters [set Hand []
+                draw_hand]
 end
 
 to purchase-body-part
@@ -151,41 +163,12 @@ to acquire-upgrade-parts
       if Body_Position = "legs"  [set ycor ycor - 4]
       if Body_Position = "left_arm" [set xcor xcor - 1 set ycor ycor - 3]
       if Body_Position = "right_arm" [set xcor xcor + 1 set ycor ycor - 3]
-      print (word Name " purchased a " From_What_Animal Body_Position " for" Cost)
+      print (word Name " purchased a " From_What_Animal " " Body_Position " for" Cost)
       let old-part one-of other turtles-here
       if old-part != nobody [ ask old-part [ set Name ""
                                              set hidden? True
                                              setxy 0 0 ] ] ]
     set Money Money - [Cost] of target]
-end
-
-to   setup_Boost_list
-  set Boost_list []
-  foreach Attributes_List [ x -> set temp_attribute  [ 3 ]
-                                 set temp_attribute  fput x temp_attribute
-                                 set Boost_list fput temp_attribute  Boost_list]
-
-  set Boost_list shuffle Boost_list
-    ask Monsters  [
-    set Boost first Boost_list
-    set Boost_list but-first Boost_list
-    if item 0 Boost = "Fear" [set Fear Fear + item 1 Boost]
-    if item 0 Boost = "Attack" [set Attack Attack + item 1 Boost]
-    if item 0 Boost = "Cute" [set Cute Cute + item 1 Boost]
-    if item 0 Boost = "Speed" [set Speed Speed + item 1 Boost]
-    if item 0 Boost = "Intelligence" [set Intelligence Intelligence + item 1 Boost]
-    if item 0 Boost = "Defence" [set Defence Defence + item 1 Boost ] ]
-  ;; Secret missions fall into 3 categories
-  ;;              Actions (fight, sabotage, shaftback, go fishing in DNA pool, etc.) that are played at one point in the game and take immediate effect.
-  ;;              Goals (Gain 8 total intelligence, 8 total cute, etc. or end game with 5 different animal body parts, etc. ) kept secret during the entire game and offer possibility of extra points at end
-  ;;              Boosts (+ 3 cute, + 2 intelligence, etc. ) these are played immediately and take immediate effect that endures an unknown amount of time.
-end
-
-to setup_End_Goal_List
-  set End_Goal_List []
-  foreach Attributes_List [ x -> set temp_attribute  [ 8 ]
-                                 set temp_attribute  fput x temp_attribute
-                                 set End_Goal_List fput temp_attribute End_Goal_List]
 end
 
 to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask Monsters" at the beginning of the command
@@ -194,8 +177,8 @@ to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask
   set Number_Attributes_On_My_Mission 0
   set Mission_Money_Reward 0
   set Mission_Points_Reward 0
-  set My_Mission first Starter_Missions_List
-  set Starter_Missions_List but-first Starter_Missions_List
+  set My_Mission first Missions_List
+  set Missions_List but-first Missions_List
 
   set Mission_Points_Reward last My_Mission
   set My_Mission but-last My_Mission
@@ -227,6 +210,13 @@ to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask
 
 end
 
+to use_hand
+  purchase-body-part ; make this look only at body parts in hand
+  ; apply boosts from hand
+  ; trigger fights or other actions if action card in hand
+  ; set goals if goals in hand
+  ;
+end
 
 to roll-dice [dice_to_roll bar_to_pass]
   if Garrulous? [
@@ -276,11 +266,14 @@ to Calculate_Total_Attributes
 end
 
 to go
+
   ;; update global variables
-  ask Monsters [Attempt_Mission]
-  ask Monsters [purchase-body-part]
-  Calculate_Total_Attributes  ;;; This re-calculation of attributes from body parts + boosts happens at end of turn
-                              ;;; - after any new body part shopping - so newly purchased body parts cannot be used in missions attepmted on same turn as their purchase
+  ask Monsters [set Money Money + 2
+                use_hand
+                Attempt_Mission
+                Calculate_Total_Attributes
+                draw_hand]  ;;; This re-calculation of attributes from body parts + boosts happens at end of turn
+                                             ;;; - after any new body part shopping - so newly purchased body parts cannot be used in missions attepmted on same turn as their purchase
 
   tick
 end

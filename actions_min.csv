@@ -1,0 +1,25 @@
+actions ,billy_1,Start fight with 1 player that has ghest battle score,immediately,1,0
+actions ,billy_2,Start fight with 1 player that has ghest battle score,immediately,1,0
+actions ,fight_1,Start fight with 1 other player,during ,1,1
+actions,fight_2,Start fight with 1 other player,during ,1,1
+actions ,fight_3,Start fight with 1 other player,during ,1,1
+actions,fight_4,Start fight with 1 other player,during ,1,1
+actions,robbery_1,steal 3 money from player with most money,during ,0,0
+actions,robbery_2,steal 3 money from player with most money,during ,0,0
+actions ,royal_rumble,Trigger all player fight,during ,5,5
+actions ,drugs_1,roll one extra dice for all dice rolls this turn,during,0,0
+actions ,drugs_2,roll one extra dice for all dice rolls this turn,during,0,0
+actions ,drugs_3,roll one extra dice for all dice rolls this turn,during,0,0
+actions,spymaster_1,succeed at 1 mission attribute without rolling,during ,0,0
+actions,spymaster_2,succeed at 1 mission attribute without rolling,during ,0,0
+actions ,breakthrough_1,purchase extra body part at no cost,during,0,0
+actions ,breakthrough_2,purchase extra body part at no cost,during,0,0
+actions,shaftback_1,"if shafted during cooperative mission, take all rewards",during,0,0
+actions,shaftback_2,"if shafted during cooperative mission, take all rewards",during,0,0
+actions,exchange_1,swap DNA pool with 1 other player,during,0,0
+actions,exchange_2,swap DNA pool with 1 other player,during,0,0
+actions,injury_1,other player of choice receives injury or pays 3 money,during,0,0
+actions,injury_2,other player of choice receives injury or pays 3 money,during,0,0
+actions,sabotage_1,other player must give you reward or points from successful mission,during,0,0
+actions,sabotage_2,other player must give you reward or points from successful mission,during,0,0
+actions,sabotage_3,other player must give you reward or points from successful mission,during,0,0

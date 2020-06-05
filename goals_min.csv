@@ -1,0 +1,26 @@
+goals,nightmare,"True if > 3 body parts come from spider, scoprion, crab, vamire bat, ants or eels",end ,2,0
+goals,cutest,True if total cute of myself > total cute of all players,end ,2,0
+goals,feariest,True if total fear  of myself > total fear of all players,end ,2,0
+goals,intelligentiest,True if total intelligence of myself > total intelligence of all players,end ,2,0
+goals,speediest,True if total speed  of myself > total speed of all players,end ,2,0
+goals,attackiest,True if total attack of myself > total attack of all players,end ,2,0
+goals,defenciest,True if total defence  of myself > total defence of all players,end ,2,0
+goals,battliest,True if battle score  of myself > total battle score of all players,end ,2,0
+goals,flying,"True if right_arm and left_arm come from bird, eagle, vapire bat, dosphin stingray or eels",end ,2,0
+goals,amphibious,"True if > 3 body parts come from crab, dolphin, stingray, shrimp eels, or crocodile",end ,2,0
+goals,well_rounded,True if value of all 6 attributes is >= 3,end ,2,0
+goals,total_attack,True if total__attack >= 8,during,3,0
+goals,total_cute,True if total_cute >= 8,during,3,0
+goals,total_defence,True if total_defence >= 8,during,3,0
+goals,total_fear,True if total_fear >= 8,during,3,0
+goals,total_intelligence,True if total_intelligence >= 8,during,3,0
+goals,total_speed,True if total_speed >= 8,during,3,0
+goals,good_attack,True if total__attack >= 5,during,2,0
+goals,good_cute,True if total_cute >= 5,during,2,0
+goals,good_defence,True if total_defence >= 5,during,2,0
+goals,good_fear,True if total_fear >= 5,during,2,0
+goals,good_intelligence,True if total_intelligence >= 5,during,2,0
+goals,good_speed,True if total_speed >= 5,during,2,0
+goals,somewhat_well_rounded,True if value of at least 3 attributes is >= 5,during,3,0
+goals,kinda_well_rounded,True if value of at least 3 attributes is >= 3,during,2,0
+goals,diverisity,True if from animals of all 5 body parts do not match and do not match name,during ,3,0
