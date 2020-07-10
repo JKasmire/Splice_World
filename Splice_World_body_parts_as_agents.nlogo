@@ -5,23 +5,17 @@ extensions [csv]
 globals [
 Game_Round
 Basic_Monsters_List
-Body_Parts_List
-Attributes_List
 Total_Successes_Dice_Roll
 Total_Doubles_Dice_Roll
 temp_doubling_list
-Boost_list
 temp_attribute
-Goals_List
-Missions_list
-Round_1_Body_Parts_list
 Cards_list
 ]
 
 breed [Monsters Monster]
 breed [Body_Parts Body_Part]
 
-turtles-own [
+Monsters-own [
 Name
 Theoretical?
 Attack
@@ -30,9 +24,6 @@ Defence
 Fear
 Intelligence
 Speed
-]
-
-Monsters-own [
 Total_Attack
 Total_Defence
 Total_Fear
@@ -40,6 +31,7 @@ Total_Cute
 Total_Speed
 Total_Intelligence
 Hand
+Part_to_Purchase
 Boost
 My_Goals
 Money
@@ -47,27 +39,32 @@ Points
 My_Mission
 Number_Attributes_On_My_Mission
 Mission_Attribute_Successes
+Mission_Name
 Mission_Money_Reward
 Mission_Points_Reward
 ]
 
 Body_Parts-own [
+Name
+Theoretical?
 From_What_Animal
 Body_Position
+Attack
+Cute
+Defence
+Fear
+Intelligence
+Speed
 Cost
+Battle_Score
 ]
 
 to setup
   clear-all
   set Basic_Monsters_List ["bug" "tortoise" "rabbit" "spider" "bird" "cat"]
-  set Attributes_List ["Attack" "Cute" "Defence" "Fear" "Intelligence" "Speed"]
   set Cards_list csv:from-file "cards_list_min.csv"
   set Cards_list shuffle Cards_list
-  set Boost_list csv:from-file "boosts_min.csv"
-  set Missions_list csv:from-file "missions_min.csv"
-  set Goals_List csv:from-file "goals_min.csv"
-
-  if Garrulous? [print "All lists set up!"]
+  if Garrulous? [print "Cards shuffled!"]
   setup_Monsters
   Calculate_Total_Attributes
   reset-ticks
@@ -77,7 +74,8 @@ to draw_hand
   while [length Hand < 5] [
     let temp_Hand first Cards_list
     set Hand fput temp_Hand Hand
-    set Cards_list butfirst Cards_list]
+    set Cards_list butfirst Cards_list] ;; remove-item removed item from list using its index, positon reports the index for the item.
+  set label Hand
 end
 
 to setup_Monsters
@@ -90,8 +88,8 @@ to setup_Monsters
     set size 2                                                      ;;; Adjusts size to be more visible
     set Money 5                                                     ;;; Gets a starting bank balance
     set Points 0                                                    ;;; Ensures the starting points balance is at zero
-    set shape Name]                                                 ;;; Sets shape to improve visibility of game play
-
+    set shape Name                                                  ;;; Sets shape to improve visibility of game play
+    set label Hand ]
   layout-circle Monsters 10                                         ;;; once all monsters have been created, at least in the basic sense, they are organised into a circle
   ask Monsters [      set ycor ycor + 3 ]                           ;;; The monsters all then take three steps toward the top of the screen to make room for their body parts to be visible below them without  without overlapping or getting weird
 
@@ -100,7 +98,7 @@ to setup_Monsters
     user-message "No file 'Level_1_Parts_min.csv' exists!"
     stop]
 
-  file-open "Level_1_Parts_min.csv"                                 ;;; open the file with the body parts data
+  file-open "Parts_min.csv"                                 ;;; open the file with the body parts data
   while [ not file-at-end? ] [                                      ;;; We'll read all the data in a single loop
     let data csv:from-row file-read-line                            ;;; here the CSV extension grabs a single line and puts the read data in a list
     create-Body_Parts 1 [                                           ;;; now we can use that list to create a turtle with the saved properties
@@ -115,6 +113,7 @@ to setup_Monsters
       set Intelligence item 6 data
       set Speed item 7 data
       set Cost item 8 data
+      set Battle_Score item 9 data
       set hidden? True
     ]
   ]
@@ -126,20 +125,14 @@ file-close ; make sure to close the file
     if Body_Position = "legs"  [set shape "triangle"]
     if Body_Position = "left_arm" [set shape "footprint other"]
     if Body_Position = "right_arm" [set shape "footprint other"] ]
-  ask Monsters [purchase-body-part]
-  ask Monsters [set Hand []
-                draw_hand]
-end
-
-to purchase-body-part
-  let my-purchasable-pool Body_Parts with [ (Cost < [Money] of myself ) and (Name = "")]     ;;; step 1 creates an agent-set of body-parts that are not assigned and within my budget
-  if my-purchasable-pool != nobody  [                                                        ;;; if the agent-set of purchasable body-parts is not empty, continue with process
-    ifelse count Body_Parts with [Name = [Name] of myself] < 5  [ acquire-starter-parts ]    ;;; ifelse count body parts assigned to me < 5, use starter process to get my basic starter body parts
-    [acquire-upgrade-parts] ]                                                                ;;; if the count of body parts assigned to me is = 5, use the non-starter process to upgrade body part
+  ask Monsters [acquire-starter-parts]
+  ask Monsters [set Hand []]
+  ask Monsters [ draw_hand]
 end
 
 to acquire-starter-parts
         ask Body_Parts with [From_What_Animal = [Name] of myself] [
+          set Theoretical? False
           set hidden? False
           set Name [Name] of myself
           set color [color] of myself
@@ -151,77 +144,67 @@ to acquire-starter-parts
         if Body_Position = "right_arm" [set xcor xcor + 1 set ycor ycor - 3] ]
 end
 
-to acquire-upgrade-parts
-  let target one-of Body_Parts with [ (Cost < [Money] of myself ) and (Name = "")]
-    if target != nobody [ ask target [
-      set hidden? False
-      set Name [Name] of myself
-      set color [color] of myself
-      move-to myself
-      if Body_Position =  "head" [set ycor ycor - 2]
-      if Body_Position = "trunk" [set ycor ycor - 3]
-      if Body_Position = "legs"  [set ycor ycor - 4]
-      if Body_Position = "left_arm" [set xcor xcor - 1 set ycor ycor - 3]
-      if Body_Position = "right_arm" [set xcor xcor + 1 set ycor ycor - 3]
-      print (word Name " purchased a " From_What_Animal " " Body_Position " for" Cost)
-      let old-part one-of other turtles-here
-      if old-part != nobody [ ask old-part [ set Name ""
-                                             set hidden? True
-                                             setxy 0 0 ] ] ]
-    set Money Money - [Cost] of target]
+
+to use_hand
+  foreach Hand [[i] ->
+    if item 0 i = "boost" [
+    set Boost item 1 i
+    if Garrulous? [print Boost]
+    set Attack Attack + item 2 i
+    set Cute Cute + item 3 i
+    set Defence Defence + item 4 i
+    set Fear Fear + item 5 i
+    set Intelligence Intelligence + item 6 i
+    set Speed Speed + item 7 i
+    ]
+    if item 0 i = "action" [if Garrulous? [print i]]
+    if item 0 i = "mission" [if Garrulous? [print i]
+                           set My_Mission i
+                           Attempt_Mission ]
+    if item 0 i = "body_part" [if Garrulous? [print i]
+      if Money >= item 9 i [set Part_to_Purchase i
+                            acquire-upgrade-parts]]
+    if item 0 i = "goal" [if Garrulous? [print i]]
+  ]
 end
 
 to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask Monsters" at the beginning of the command
-  set My_Mission []
   set Mission_Attribute_Successes 0
   set Number_Attributes_On_My_Mission 0
   set Mission_Money_Reward 0
   set Mission_Points_Reward 0
-  set My_Mission first Missions_List
-  set Missions_List but-first Missions_List
+  set My_Mission but-first My_Mission
+  set Mission_name first My_Mission
+  set My_Mission but-first My_Mission
 
   set Mission_Points_Reward last My_Mission
   set My_Mission but-last My_Mission
   set Mission_Money_Reward last My_Mission
   set My_Mission but-last My_Mission
+  foreach My_Mission [attribute -> if attribute > 0 [set Number_Attributes_On_My_Mission Number_Attributes_On_My_Mission + 1]]
 
-  set Number_Attributes_On_My_Mission ( length My_Mission  / 2 )
+  if Garrulous? [  print "" print (word "I, " Name " will take on the " Mission_name " mission, for which I need " Number_Attributes_On_My_Mission " attribute(s) and can earn " Mission_Money_Reward " cash and " Mission_Points_Reward " points." ) ]
 
-  if Garrulous? [  print "" print (word "I, " Name ", need " Number_Attributes_On_My_Mission " attribute(s) for this mission to earn " Mission_Money_Reward " in cash and " Mission_Points_Reward " in points." ) ]
-
-  while [length My_Mission > 0] [
-  if Garrulous? [  print (word "I need " item 1 My_Mission " " item 0 My_Mission ".") ]
-  if item 0 My_Mission = "Total_Attack" [roll-dice Total_Attack  item 1 My_Mission]
-  if item 0 My_Mission = "Total_Cute" [roll-dice Total_Cute item 1 My_Mission]
-  if item 0 My_Mission = "Total_Defence" [roll-dice Total_Defence item 1 My_Mission]
-  if item 0 My_Mission = "Total_Fear" [roll-dice Total_Fear item 1 My_Mission]
-  if item 0 My_Mission = "Total_Intelligence" [roll-dice Total_Intelligence item 1 My_Mission]
-  if item 0 My_Mission = "Total_Speed" [roll-dice Total_Speed item 1 My_Mission]
-      repeat 2 [set My_Mission but-first My_Mission] ]
-
-  if length My_Mission = 0
-  [ifelse Mission_Attribute_Successes = Number_Attributes_On_My_Mission
+  if item 0 My_Mission > 0 [   if Garrulous? [  print (word "Now, I need to roll for attack.") ] roll-dice Total_Attack  item 0 My_Mission ]
+  if item 1 My_Mission > 0 [   if Garrulous? [  print (word "Now, I need to roll for cute.") ] roll-dice Total_Cute item 1 My_Mission]
+  if item 2 My_Mission > 0 [  if Garrulous? [  print (word "Now, I need to roll for defense.") ] roll-dice Total_Defence item 2 My_Mission]
+  if item 3 My_Mission > 0 [   if Garrulous? [  print (word "Now, I need fear.") ] roll-dice Total_Fear item 3 My_Mission]
+  if item 4 My_Mission > 0 [   if Garrulous? [  print (word "Now, I need intelligence.") ] roll-dice Total_Intelligence item 4 My_Mission]
+  if item 5 My_Mission > 0 [  if Garrulous? [  print (word "Now, I need speed.") ] roll-dice Total_Speed item 5 My_Mission]
+  ifelse Mission_Attribute_Successes = Number_Attributes_On_My_Mission
     [ set Money Money + Mission_Money_Reward
       set Points Points + Mission_Points_Reward
       if Garrulous? [print "Succeeded on all attributes and so succeeded on the mission."]]
-    [print "Failed on at least one attribute and so failed on the mission."] ]
+    [print "Failed on at least one attribute and so failed on the mission."]
 
   ;; Need to add cooperative mission aspect at some point
 
 end
 
-to use_hand
-  purchase-body-part ; make this look only at body parts in hand
-  ; apply boosts from hand
-  ; trigger fights or other actions if action card in hand
-  ; set goals if goals in hand
-  ;
-end
-
 to roll-dice [dice_to_roll bar_to_pass]
   if Garrulous? [
     ifelse dice_to_roll < bar_to_pass
-    [print (word "I need at least " bar_to_pass " blues to complete this attribute test for this mission, but I only have " dice_to_roll " so I will fail unless I cooperate.")]
+    [print (word "I need cooperate because I need at least " bar_to_pass " blues for this attribute, but I only have " dice_to_roll " dice to roll.")]
     [print (word "Rolling " dice_to_roll " dice in order to get at least " bar_to_pass " blues to complete this attribute test for this mission.") ] ]
 
   set Total_Successes_Dice_Roll 0
@@ -247,14 +230,37 @@ to roll-dice [dice_to_roll bar_to_pass]
     [print "Failed on this attribute."]
 end
 
+to acquire-upgrade-parts
+  ask Monsters [
+      ask Body_Parts with [(From_What_Animal = item 1 Part_to_Purchase) and (Body_Position = item 2 Part_to_Purchase)] [
+      set hidden? False
+      set Theoretical? False
+      set Name [Name] of myself
+      set color [color] of myself
+      move-to myself
+      if Body_Position =  "head" [set ycor ycor - 2]
+      if Body_Position = "trunk" [set ycor ycor - 3]
+      if Body_Position = "legs"  [set ycor ycor - 4]
+      if Body_Position = "left_arm" [set xcor xcor - 1 set ycor ycor - 3]
+      if Body_Position = "right_arm" [set xcor xcor + 1 set ycor ycor - 3]
+      print (word Name " purchased a " From_What_Animal " " Body_Position " for" Cost)
+      let old-part one-of other turtles-here
+      if old-part != nobody [ ask old-part [ set Name ""
+                                             set hidden? True
+                                             set Theoretical? True
+      setxy 0 0 ] ] ]
+    set Money Money - item 9 Part_to_Purchase]
+end
+
+
 to Calculate_Total_Attributes
   ask Monsters [
-    set Total_Attack sum [Attack] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
-    set Total_Defence sum [Defence] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
-    set Total_Cute sum [Cute] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
-    set Total_Fear sum [Fear] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
-    set Total_Intelligence sum [Intelligence] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
-    set Total_Speed sum [Speed] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Attack sum [Attack] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Defence sum [Defence] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Cute sum [Cute] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Fear sum [Fear] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Intelligence sum [Intelligence] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Speed sum [Speed] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
 
     if Garrulous? [  print Name
       if Total_Attack > 0 [print "Total Attack" print Total_Attack]
@@ -266,15 +272,10 @@ to Calculate_Total_Attributes
 end
 
 to go
-
-  ;; update global variables
   ask Monsters [set Money Money + 2
                 use_hand
-                Attempt_Mission
                 Calculate_Total_Attributes
-                draw_hand]  ;;; This re-calculation of attributes from body parts + boosts happens at end of turn
-                                             ;;; - after any new body part shopping - so newly purchased body parts cannot be used in missions attepmted on same turn as their purchase
-
+                draw_hand]
   tick
 end
 
@@ -290,7 +291,7 @@ GRAPHICS-WINDOW
 -1
 12.0
 1
-24
+8
 1
 1
 1
@@ -351,7 +352,7 @@ Number_Players
 Number_Players
 3
 6
-6.0
+3.0
 1
 1
 NIL
