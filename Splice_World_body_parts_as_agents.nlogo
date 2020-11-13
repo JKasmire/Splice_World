@@ -1,5 +1,8 @@
 ;;; https://github.com/JKasmire/Splice_World to copy my code and code along.
 
+
+;; Dice to roll has gone squiffy - seems to always say 0 even though the monsters should not be
+;; taking on missions for which they do not have sufficient dice to roll on each necessary attribute
 extensions [csv]
 
 globals [
@@ -37,11 +40,12 @@ My_Goals
 Money
 Points
 My_Mission
-Number_Attributes_On_My_Mission
 Mission_Attribute_Successes
 Mission_Name
 Mission_Money_Reward
 Mission_Points_Reward
+Decision
+Shaft_Share
 ]
 
 Body_Parts-own [
@@ -62,6 +66,7 @@ Battle_Score
 to setup
   clear-all
   set Basic_Monsters_List ["bug" "tortoise" "rabbit" "spider" "bird" "cat"]
+  set Basic_Monsters_List shuffle Basic_Monsters_List                        ;;; Shuffles the list of Basic or Starter monsters so that games with fewer than the max number of players will not always get the same monsters or in the same order
   set Cards_list csv:from-file "cards_list_min.csv"
   set Cards_list shuffle Cards_list
   if Garrulous? [print "Cards shuffled!"]
@@ -70,43 +75,35 @@ to setup
   reset-ticks
 end
 
-to draw_hand
-  while [length Hand < 5] [
-    let temp_Hand first Cards_list
-    set Hand fput temp_Hand Hand
-    set Cards_list butfirst Cards_list] ;; remove-item removed item from list using its index, positon reports the index for the item.
-  set label Hand
-end
-
 to setup_Monsters
   create-Monsters Number_Players                                    ;;; Creates starter monsters equal to the number of players
-  set Basic_Monsters_List shuffle Basic_Monsters_List               ;;; Shuffles the list of Basic or Starter monsters so that games with fewer than the max number of players will not always get the same monsters or in the same order
   ask Monsters [                                                    ;;;
     set Name first Basic_Monsters_List                              ;;; The first monster sets its name to the first on the recently shuffled list of basic or starter monsters. Effectively, player one draws a card to see what monster to play as
-    set Theoretical? False                                          ;;; This may or may not be used long term... currently it is expected to be useful for determining which body part to buy
     set Basic_Monsters_List but-first Basic_Monsters_List           ;;; Removes the first monster from the basic monster list so the next player will draw a different "card"
+    set Theoretical? False                                          ;;; This may or may not be used long term... currently it is expected to be useful for determining which body part to buy
     set size 2                                                      ;;; Adjusts size to be more visible
     set Money 5                                                     ;;; Gets a starting bank balance
     set Points 0                                                    ;;; Ensures the starting points balance is at zero
     set shape Name                                                  ;;; Sets shape to improve visibility of game play
-    set label Hand ]
+  ]
+
   layout-circle Monsters 10                                         ;;; once all monsters have been created, at least in the basic sense, they are organised into a circle
   ask Monsters [      set ycor ycor + 3 ]                           ;;; The monsters all then take three steps toward the top of the screen to make room for their body parts to be visible below them without  without overlapping or getting weird
 
   file-close-all                                                    ;;; close all open files before opening the body parts file
-  if not file-exists? "Level_1_Parts_min.csv" [
-    user-message "No file 'Level_1_Parts_min.csv' exists!"
+  if not file-exists? "Parts_min.csv" [                             ;;; sanity check to ensure parts file exists before trying to open it
+    user-message "No file 'Parts_min.csv' exists!"
     stop]
 
-  file-open "Parts_min.csv"                                 ;;; open the file with the body parts data
+  file-open "Parts_min.csv"                                         ;;; open the file with the body parts data
   while [ not file-at-end? ] [                                      ;;; We'll read all the data in a single loop
     let data csv:from-row file-read-line                            ;;; here the CSV extension grabs a single line and puts the read data in a list
     create-Body_Parts 1 [                                           ;;; now we can use that list to create a turtle with the saved properties
-      set Name ""
-      set From_What_Animal item 0 data
-      set Theoretical? True
-      set Body_Position item 1 data
-      set Attack item 2 data
+      set Name ""                                                   ;;; Leave the name field blank for now, because the name only matters when the body part becomes a part of an existing monster
+      set Theoretical? True                                         ;;; Initially, all body parts are theoretical. They only become real when they are attached to a monster
+      set From_What_Animal item 0 data                              ;;; This describes the animal that the body part comes from
+      set Body_Position item 1 data                                 ;;; this describes the body part (e.g. left arm, legs, etc.)
+      set Attack item 2 data                                        ;;; This, and the following 7 lines, define the properties of the body part
       set Cute item 3 data
       set Defence item 4 data
       set Fear item 5 data
@@ -114,76 +111,105 @@ to setup_Monsters
       set Speed item 7 data
       set Cost item 8 data
       set Battle_Score item 9 data
-      set hidden? True
-    ]
-  ]
+      set hidden? True                                             ;;; Is hidden like theoretical? why do I need two? Hidden is primitive feature Netlogo that determines if the object is visible in the agent field
+    ]]
 
-file-close ; make sure to close the file
+file-close                                                         ;;; make sure to close the file
   ask Body_Parts [
-    if Body_Position =  "head" [set shape "face happy"]
+    if Body_Position =  "head" [set shape "face happy"]            ;;; All of the newly created (but only theoretical and hidden) body parts set their shape accordingly
     if Body_Position = "trunk" [set shape "pentagon"]
     if Body_Position = "legs"  [set shape "triangle"]
     if Body_Position = "left_arm" [set shape "footprint other"]
     if Body_Position = "right_arm" [set shape "footprint other"] ]
-  ask Monsters [acquire-starter-parts]
-  ask Monsters [set Hand []]
-  ask Monsters [ draw_hand]
+
+  ask Monsters [acquire-starter-parts]                             ;;; run nested code to ask their matching body parts to move into position, become visible, set colour, etc.
+  ask Monsters [set Hand []]                                       ;;; sets the Hand to be an empty list
+  ask Monsters [ draw_hand]                                        ;;; each monster draws a hand of cards and sets their hand varable to be that list
+  ask Monsters [set label length Hand]
+
 end
 
 to acquire-starter-parts
-        ask Body_Parts with [From_What_Animal = [Name] of myself] [
-          set Theoretical? False
-          set hidden? False
-          set Name [Name] of myself
-          set color [color] of myself
-          move-to myself
-          if Body_Position =  "head" [set ycor ycor - 2]
+        ask Body_Parts with [From_What_Animal = [Name] of myself] [ ;;; The monsters ask all body parts who belong to the animal that matches its own name (e.g. the bug monster asks the bug body parts, etc.)
+          set Theoretical? False                                    ;;; to set themselves real
+          set hidden? False                                         ;;; to set themselves visible
+          set Name [Name] of myself                                 ;;; to set their name to match the monster's name
+          set color [color] of myself                               ;;; to set their color to match the monster's colour
+          move-to myself                                            ;;; to set their position as the same as the monster's position and then (according to which part they are) move into position relative to the monster (e.g. head moves up, legs down, etc.)
+          if Body_Position = "head"  [set ycor ycor - 2]
           if Body_Position = "trunk" [set ycor ycor - 3]
           if Body_Position = "legs"  [set ycor ycor - 4]
           if Body_Position = "left_arm" [set xcor xcor - 1 set ycor ycor - 3]
-        if Body_Position = "right_arm" [set xcor xcor + 1 set ycor ycor - 3] ]
+          if Body_Position = "right_arm" [set xcor xcor + 1 set ycor ycor - 3] ]
 end
 
+;;;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Set up only procedures above this line ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to go
+  ask Monsters [set Money Money + 2                               ;;; each Monster's turn starts with collecting two coins from the bank
+                use_hand
+                Calculate_Total_Attributes
+                draw_hand]
+  tick
+end
 
 to use_hand
-  foreach Hand [[i] ->
-    if item 0 i = "boost" [
-    set Boost item 1 i
-    if Garrulous? [print Boost]
-    set Attack Attack + item 2 i
-    set Cute Cute + item 3 i
-    set Defence Defence + item 4 i
-    set Fear Fear + item 5 i
-    set Intelligence Intelligence + item 6 i
-    set Speed Speed + item 7 i
-    ]
-    if item 0 i = "action" [if Garrulous? [print i]]
+  foreach Hand [[i] ->                                            ;;; The Monster looks through their hand and applies all instant apply cards
+    if item 0 i = "boost" [ set Boost item 1 i                    ;;; Boosts are instant apply cards, so the monster applies any Boost cards
+                            if Garrulous? [print Boost]
+                               set Attack Attack + item 2 i
+                               set Cute Cute + item 3 i
+                               set Defence Defence + item 4 i
+                               set Fear Fear + item 5 i
+                               set Intelligence Intelligence + item 6 i
+                               set Speed Speed + item 7 i
+                               set Hand remove i Hand]
+    if item 0 i = "action" [if Garrulous? [print i]]              ;;; Actions require decision making, so currently the instant apply here is only to say that there is an action
     if item 0 i = "mission" [if Garrulous? [print i]
-                           set My_Mission i
-                           Attempt_Mission ]
+                             set My_Mission i
+                             Decide_on_Mission
+                             ifelse member? 0 Decision [set My_Mission [] ]
+                                                       [Attempt_Mission
+                                                        set Hand remove i Hand ] ]
     if item 0 i = "body_part" [if Garrulous? [print i]
-      if Money >= item 9 i [set Part_to_Purchase i
-                            acquire-upgrade-parts]]
+                               if Money >= item 9 i [
+                                    set Part_to_Purchase Body_Parts with [(From_What_Animal = item 1 i) and (Body_Position = item 2 i)]
+                                    print (word "I can purchase " Part_to_Purchase )
+                                    acquire-upgrade-parts]
+                                    set Hand remove i Hand]
     if item 0 i = "goal" [if Garrulous? [print i]]
   ]
 end
 
-to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask Monsters" at the beginning of the command
+to Decide_on_Mission
+  set Decision []
   set Mission_Attribute_Successes 0
-  set Number_Attributes_On_My_Mission 0
   set Mission_Money_Reward 0
   set Mission_Points_Reward 0
   set My_Mission but-first My_Mission
+  set My_Mission but-last My_Mission
   set Mission_name first My_Mission
   set My_Mission but-first My_Mission
-
   set Mission_Points_Reward last My_Mission
   set My_Mission but-last My_Mission
   set Mission_Money_Reward last My_Mission
   set My_Mission but-last My_Mission
-  foreach My_Mission [attribute -> if attribute > 0 [set Number_Attributes_On_My_Mission Number_Attributes_On_My_Mission + 1]]
+  set Shaft_Share random 1
 
-  if Garrulous? [  print "" print (word "I, " Name " will take on the " Mission_name " mission, for which I need " Number_Attributes_On_My_Mission " attribute(s) and can earn " Mission_Money_Reward " cash and " Mission_Points_Reward " points." ) ]
+if item 0 My_Mission > 0 [ifelse item 0 My_Mission > Total_Attack  [set Decision fput 0 Decision ][set Decision fput 1 Decision ]]
+if item 1 My_Mission > 0 [ifelse item 1 My_Mission > Total_Cute    [set Decision fput 0 Decision ][set Decision fput 1 Decision ]]
+if item 2 My_Mission > 0 [ifelse item 2 My_Mission > Total_Defence    [set Decision fput 0 Decision ][set Decision fput 1 Decision ]]
+if item 3 My_Mission > 0 [ifelse item 3 My_Mission > Total_Fear    [set Decision fput 0 Decision ][set Decision fput 1 Decision ]]
+if item 4 My_Mission > 0 [ifelse item 4 My_Mission > Total_Intelligence    [set Decision fput 0 Decision ][set Decision fput 1 Decision ]]
+if item 5 My_Mission > 0 [ifelse item 5 My_Mission > Total_Speed    [set Decision fput 0 Decision ][set Decision fput 1 Decision ]]
+
+  if Garrulous? [  ifelse member? 0 Decision [print (word Name " considered the " Mission_name " mission, but would have to cooperate so decided against.")]
+                                             [print (word Name " decided to go for the " Mission_name " mission, which needs "
+                                                       length Decision " attribute(s) and is worth " Mission_Money_Reward " money and "
+                                                       Mission_Points_Reward " points." )]]
+end
+
+to Attempt_Mission
 
   if item 0 My_Mission > 0 [   if Garrulous? [  print (word "Now, I need to roll for attack.") ] roll-dice Total_Attack  item 0 My_Mission ]
   if item 1 My_Mission > 0 [   if Garrulous? [  print (word "Now, I need to roll for cute.") ] roll-dice Total_Cute item 1 My_Mission]
@@ -191,14 +217,12 @@ to Attempt_Mission ;; This is a command run by Monsters, and as such has no "ask
   if item 3 My_Mission > 0 [   if Garrulous? [  print (word "Now, I need fear.") ] roll-dice Total_Fear item 3 My_Mission]
   if item 4 My_Mission > 0 [   if Garrulous? [  print (word "Now, I need intelligence.") ] roll-dice Total_Intelligence item 4 My_Mission]
   if item 5 My_Mission > 0 [  if Garrulous? [  print (word "Now, I need speed.") ] roll-dice Total_Speed item 5 My_Mission]
-  ifelse Mission_Attribute_Successes = Number_Attributes_On_My_Mission
+  ifelse Mission_Attribute_Successes = length Decision
     [ set Money Money + Mission_Money_Reward
       set Points Points + Mission_Points_Reward
       if Garrulous? [print "Succeeded on all attributes and so succeeded on the mission."]]
     [print "Failed on at least one attribute and so failed on the mission."]
-
   ;; Need to add cooperative mission aspect at some point
-
 end
 
 to roll-dice [dice_to_roll bar_to_pass]
@@ -230,9 +254,18 @@ to roll-dice [dice_to_roll bar_to_pass]
     [print "Failed on this attribute."]
 end
 
+to cooperate
+  ; find other monster with attributes > attributes needed for this mission and ask to cooperate
+  ; if yes, both monsters choose "shaft or share"
+  ; other monster rolls dice
+  ; if mission succeeds, both monsters reveal their "shaft or share"
+  ; if both mosters have share, share
+  ; if one monster has shaft and other has share, monster with shaft takes all prizes
+  ; if both monsters have shaft, no prizes awarded
+end
+
 to acquire-upgrade-parts
-  ask Monsters [
-      ask Body_Parts with [(From_What_Animal = item 1 Part_to_Purchase) and (Body_Position = item 2 Part_to_Purchase)] [
+      ask one-of Part_to_Purchase [
       set hidden? False
       set Theoretical? False
       set Name [Name] of myself
@@ -243,41 +276,43 @@ to acquire-upgrade-parts
       if Body_Position = "legs"  [set ycor ycor - 4]
       if Body_Position = "left_arm" [set xcor xcor - 1 set ycor ycor - 3]
       if Body_Position = "right_arm" [set xcor xcor + 1 set ycor ycor - 3]
-      print (word Name " purchased a " From_What_Animal " " Body_Position " for" Cost)
+      ask myself [set Money Money - [Cost] of one-of Part_to_Purchase]
+      print (word Name " purchased a " From_What_Animal " " Body_Position " for " Cost)
       let old-part one-of other turtles-here
       if old-part != nobody [ ask old-part [ set Name ""
                                              set hidden? True
                                              set Theoretical? True
       setxy 0 0 ] ] ]
-    set Money Money - item 9 Part_to_Purchase]
 end
 
 
 to Calculate_Total_Attributes
   ask Monsters [
-    set Total_Attack sum [Attack] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
-    set Total_Defence sum [Defence] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
-    set Total_Cute sum [Cute] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
-    set Total_Fear sum [Fear] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
-    set Total_Intelligence sum [Intelligence] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
-    set Total_Speed sum [Speed] of Body_Parts with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Attack sum [Attack] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Defence sum [Defence] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Cute sum [Cute] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Fear sum [Fear] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Intelligence sum [Intelligence] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
+    set Total_Speed sum [Speed] of turtles with [(Name = [Name] of myself) and (Theoretical? = False)]
 
-    if Garrulous? [  print Name
-      if Total_Attack > 0 [print "Total Attack" print Total_Attack]
-      if Total_Cute > 0 [print "Total Cute" print Total_Cute]
-      if Total_Defence > 0 [print "Total Defence" print Total_Defence]
-      if Total_Fear > 0 [print "Total Fear" print Total_Fear]
-      if Total_Intelligence > 0 [print "Total Intelligence" print Total_Intelligence]
-      if Total_Speed > 0 [print "Total Speed" print Total_Speed]  ] ]
+;    if Garrulous? [  print Name
+;      if Total_Attack > 0 [print "Total Attack" print Total_Attack]
+;      if Total_Cute > 0 [print "Total Cute" print Total_Cute]
+;      if Total_Defence > 0 [print "Total Defence" print Total_Defence]
+;      if Total_Fear > 0 [print "Total Fear" print Total_Fear]
+;      if Total_Intelligence > 0 [print "Total Intelligence" print Total_Intelligence]
+;      if Total_Speed > 0 [print "Total Speed" print Total_Speed]  ]
+  ]
 end
 
-to go
-  ask Monsters [set Money Money + 2
-                use_hand
-                Calculate_Total_Attributes
-                draw_hand]
-  tick
+to draw_hand
+  while [length Hand < 5] [                                       ;;; The monsters continue to draw cards until they have 5 cards each in their Hand
+    let temp_Hand first Cards_list                                ;;; "pick up the top card from the draw pile"
+    set Hand fput temp_Hand Hand                                  ;;; "put that picked up card in the monster's Hand"
+    set Cards_list butfirst Cards_list]                           ;;; set the draw pile to be the draw pile minus the card that was just "picked up"
+  set label length Hand
 end
+
 
 ; Copyright 2020 Dr. J. Kasmire
 ; See Info tab for full copyright and license.
@@ -352,7 +387,7 @@ Number_Players
 Number_Players
 3
 6
-3.0
+5.0
 1
 1
 NIL
